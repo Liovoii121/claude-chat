@@ -9,7 +9,8 @@ app.use(express.json());
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-7dc4776153bf45a79b5a4ea81916c762';
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+if (!DEEPSEEK_API_KEY) { console.error('❌ DEEPSEEK_API_KEY 未设置！'); process.exit(1); }
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/anthropic';
 const MEMORY_DIR = '/app/data';
 
