@@ -77,13 +77,36 @@ function loadMemory(sessionId) {
   return { messages: [], lastAccess: 0 };
 }
 
+function getArchivePath(sessionId) {
+  const safe = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return path.join(MEMORY_DIR, `archive_${safe}.json`);
+}
+
 function saveMemory(sessionId, messages) {
   try {
     const file = getMemoryPath(sessionId);
+    const keep = MAX_HISTORY * 2;
+
+    // 归档：超过保留数量的旧消息存入归档文件，永不删除
+    if (messages.length > keep) {
+      const archived = messages.slice(0, messages.length - keep);
+      const archiveFile = getArchivePath(sessionId);
+      let existingArchive = [];
+      try {
+        if (fs.existsSync(archiveFile)) {
+          existingArchive = JSON.parse(fs.readFileSync(archiveFile, 'utf-8'));
+        }
+      } catch (e) {}
+      existingArchive.push(...archived);
+      fs.writeFileSync(archiveFile, JSON.stringify(existingArchive));
+    }
+
+    // 活跃消息保留最近部分
     fs.writeFileSync(file, JSON.stringify({
-      messages: messages.slice(-MAX_HISTORY * 2),
+      messages: messages.slice(-keep),
       lastAccess: Date.now(),
       updated: new Date().toISOString(),
+      totalArchived: messages.length > keep ? messages.length - keep : 0,
     }));
   } catch (e) { console.error('Save memory error:', e.message); }
 }
@@ -165,6 +188,21 @@ app.get('/api/memories', (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ===== 归档检索 —— 翻老记忆 =====
+app.get('/api/archive/:sessionId', (req, res) => {
+  try {
+    const archiveFile = getArchivePath(req.params.sessionId);
+    if (fs.existsSync(archiveFile)) {
+      const data = JSON.parse(fs.readFileSync(archiveFile, 'utf-8'));
+      res.json({ sessionId: req.params.sessionId, count: data.length, messages: data });
+    } else {
+      res.json({ sessionId: req.params.sessionId, count: 0, messages: [] });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}););
 
 // ===== 共享记忆同步 —— 电脑和手机打通 =====
 app.post('/api/sync', express.json(), (req, res) => {
