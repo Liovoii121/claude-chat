@@ -112,7 +112,12 @@
 </div>
 
 <script>
-  const SESSION = 'hanhan-' + Math.random().toString(36).slice(2, 6);
+  const STORAGE_KEY = 'claude-chat-session';
+  let SESSION = localStorage.getItem(STORAGE_KEY);
+  if (!SESSION) {
+    SESSION = 'hanhan-' + Math.random().toString(36).slice(2, 6);
+    localStorage.setItem(STORAGE_KEY, SESSION);
+  }
   const msgs = document.getElementById('messages');
   const input = document.getElementById('input');
 
@@ -131,6 +136,21 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
   function hideTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
+
+  // 加载历史消息
+  async function loadHistory() {
+    try {
+      const resp = await fetch('/api/sync/' + SESSION);
+      const data = await resp.json();
+      if (data.messages && data.messages.length > 0) {
+        msgs.innerHTML = '';
+        for (const m of data.messages) {
+          addMsg(m.content, m.role === 'user');
+        }
+      }
+    } catch (e) {}
+  }
+  loadHistory();
 
   async function send() {
     const msg = input.value.trim();
