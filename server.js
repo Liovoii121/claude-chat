@@ -202,7 +202,7 @@ app.get('/api/archive/:sessionId', (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-}););
+});
 
 // ===== 共享记忆同步 —— 电脑和手机打通 =====
 app.post('/api/sync', express.json(), (req, res) => {
