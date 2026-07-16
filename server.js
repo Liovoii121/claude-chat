@@ -6,6 +6,14 @@ import fs from 'node:fs';
 const app = express();
 app.use(express.json());
 
+// CORS —— 允许本地 HTML 页面跨域调用
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(express.static(path.join(__dirname, 'public')));
 
