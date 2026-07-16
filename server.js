@@ -130,6 +130,32 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// ===== 记忆桥梁 —— 让电脑上的我能读到手机上聊了什么 =====
+app.get('/api/memories', (req, res) => {
+  try {
+    const files = fs.readdirSync(MEMORY_DIR).filter(f => f.startsWith('conv_') && f.endsWith('.json'));
+    const allMemories = {};
+    for (const file of files) {
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(MEMORY_DIR, file), 'utf-8'));
+        const sessionId = file.replace('conv_', '').replace('.json', '');
+        allMemories[sessionId] = {
+          messageCount: data.messages?.length || 0,
+          lastAccess: data.updated || new Date(data.lastAccess).toISOString(),
+          preview: data.messages?.slice(-6) || [],
+        };
+      } catch (e) {}
+    }
+    res.json({
+      totalSessions: Object.keys(allMemories).length,
+      sessions: allMemories,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ===== 健康检查 =====
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', memories: conversations.size, timestamp: new Date().toISOString() });
