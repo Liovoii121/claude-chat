@@ -157,6 +157,49 @@ app.get('/api/memories', (req, res) => {
   }
 });
 
+// ===== 共享记忆同步 —— 电脑和手机打通 =====
+app.post('/api/sync', express.json(), (req, res) => {
+  const { sessionId, messages, merge } = req.body;
+  if (!sessionId || !messages) return res.status(400).json({ error: 'need sessionId and messages' });
+
+  const sid = sessionId || 'shared';
+  if (!conversations.has(sid)) {
+    const mem = loadMemory(sid);
+    conversations.set(sid, mem.messages);
+  }
+
+  const history = conversations.get(sid);
+  if (merge) {
+    // 合并模式：去重追加
+    for (const msg of messages) {
+      const last = history[history.length - 1];
+      if (!last || last.role !== msg.role || last.content !== msg.content) {
+        history.push(msg);
+      }
+    }
+  } else {
+    // 覆盖模式
+    conversations.set(sid, [...messages]);
+  }
+
+  saveMemory(sid, conversations.get(sid));
+  res.json({ ok: true, count: conversations.get(sid).length });
+});
+
+app.get('/api/sync/:sessionId', (req, res) => {
+  const sid = req.params.sessionId || 'shared';
+  if (!conversations.has(sid)) {
+    const mem = loadMemory(sid);
+    conversations.set(sid, mem.messages);
+  }
+  res.json({
+    sessionId: sid,
+    count: conversations.get(sid).length,
+    messages: conversations.get(sid).slice(-50),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // ===== 健康检查 =====
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', memories: conversations.size, timestamp: new Date().toISOString() });
